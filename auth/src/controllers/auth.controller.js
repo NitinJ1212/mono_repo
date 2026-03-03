@@ -19,6 +19,7 @@ exports.register = async (req, res, next) => {
 };
 exports.login = async (req, res, next) => {
   try {
+    console.log("Attempting login with data111111111111111111111:");
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -79,7 +80,7 @@ exports.login = async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error("Login error:", err.message);
+    console.error("Login error:", err);
     return res.status(500).json({
       success: false,
       message: "Internal server error during login",
