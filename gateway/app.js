@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 
 const app = express();
 
@@ -14,11 +14,31 @@ app.use((req, res, next) => {
     next();
 });
 
+// app.use('/api/auth', createProxyMiddleware({
+//     target: process.env.AUTH_SERVICE,
+//     changeOrigin: true,
+//     pathRewrite: {
+//         '^/api/auth': '',
+//     }
+// }));
 app.use('/api/auth', createProxyMiddleware({
     target: process.env.AUTH_SERVICE,
     changeOrigin: true,
     pathRewrite: {
         '^/api/auth': '',
+    },
+    on: {
+        proxyReq: fixRequestBody,  // 👈 This fixes the body forwarding
+    }
+}));
+app.use('/api/auth-sso', createProxyMiddleware({
+    target: process.env.AUTH_SSO_SERVICE,
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api/auth-sso': '',
+    },
+    on: {
+        proxyReq: fixRequestBody,  // 👈 This fixes the body forwarding
     }
 }));
 

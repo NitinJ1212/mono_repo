@@ -19,7 +19,6 @@ exports.register = async (req, res, next) => {
 };
 exports.login = async (req, res, next) => {
   try {
-    console.log("Attempting login with data111111111111111111111:");
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -40,7 +39,7 @@ exports.login = async (req, res, next) => {
         message: "Invalid email",
       });
     }
-
+    // const verifyValid = await pool.query(`SELECT * FROM users WHERE state = $1`, [state]);
     const user = result.rows[0];
 
     // Compare hashed password
@@ -54,14 +53,15 @@ exports.login = async (req, res, next) => {
 
     // Generate JWT tokens
     const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    // const refreshToken = generateRefreshToken(user);
 
     // Optional: store refreshToken in DB
-    await pool.query(`UPDATE users SET refresh_token = $1 WHERE user_id = $2`, [refreshToken, user.id]
-    );
+    const tokenGenerateTime = new Date().toISOString();
+    await pool.query(`update public.auth_service_users SET token='${accessToken}', token_generate_time='${tokenGenerateTime}',   updated_at=NOW()`)
+    await pool.query(`select * from public.auth_service_users WHERE token='${accessToken}'`)
 
     // Set refresh token as HttpOnly cookie
-    res.cookie("refreshToken", refreshToken, {
+    res.cookie("refreshToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -72,12 +72,7 @@ exports.login = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      accessToken,
-      user: {
-        id: user.user_id,
-        email: user.user_email,
-        name: user.user_name,
-      },
+      url: `${user.redirect_uri}?code=${accessToken}&state=${state}`
     });
   } catch (err) {
     console.error("Login error:", err);
