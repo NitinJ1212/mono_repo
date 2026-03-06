@@ -45,17 +45,12 @@ async function register(req, res) {
 // ─── LOGIN ───────────────────────────────────────────────
 // POST /auth/login
 async function login(req, res) {
-  console.log("-----------2222")
   const { email, password, session_id } = req.validated;
 
   try {
     // Fetch user
-    const result = await query(
-      `SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
-              status, failed_attempts, locked_until
-       FROM users WHERE email = $1`,
-      [email.toLowerCase()]
-    );
+    const result = await query(`SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
+              status, failed_attempts, locked_until FROM users WHERE email = $1`, [email.toLowerCase()]);
     const user = result.rows[0];
 
     // Always same error to prevent user enumeration
@@ -118,14 +113,15 @@ async function login(req, res) {
 
     await auditLog({ userId: user.id, eventType: 'auth.login_success', req });
 
+    console.log("2222222222222222s--- auth session_id", session_id)
     // If this login is part of an OAuth flow (session_id passed from /authorize)
     if (session_id) {
       const pendingAuth = await redis.get(`pending_auth:${session_id}`);
+      console.log("3333333333333333333--- auth pendingAuth", pendingAuth)
       if (pendingAuth) {
         const authData = JSON.parse(pendingAuth);
         const code = await issueAuthCode(user.id, authData);
         await redis.del(`pending_auth:${session_id}`);
-
         setSessionCookie(res, sessionToken);
         return res.status(200).json({
           redirect_uri: `${authData.redirect_uri}?code=${code}&state=${authData.state}`,
@@ -379,7 +375,7 @@ async function issueAuthCode(userId, authData) {
   const { generateCode } = require('../utils/crypto');
   const code = generateCode();
   const expiresAt = new Date(Date.now() + (parseInt(process.env.AUTH_CODE_TTL) || 60) * 1000);
-
+  console.log(userId, authData, "-----------------:::::::::: userId, authData in issueAuthCode")
   await query(
     `INSERT INTO authorization_codes
        (code, user_id, client_id, redirect_uri, scopes, code_challenge, expires_at)

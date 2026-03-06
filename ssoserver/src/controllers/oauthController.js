@@ -13,23 +13,24 @@ const REFRESH_TTL = parseInt(process.env.REFRESH_TOKEN_TTL) || 604800;
 
 // ─── HELPER: validate client credentials ─────
 async function getClient(clientId, clientSecret) {
-  const result = await query(
-    'SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE',
-    [clientId]
-  );
+  const result = await query('SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE', [clientId]);
   const client = result.rows[0];
-  console.log("#33333333333333333", client)
   if (!client) return null;
 
-  const bcrypt = require('bcrypt');
-  async function main() {
-    const secret = 'mysecret123'; // your actual plain text secret
-    const hash = await bcrypt.hash(secret, 12);
-    console.log('Hash:', hash);
-  }
+  // const bcrypt = require('bcrypt');
+  // async function main() {
+  //   const secret = clientSecret; // your actual plain text secret
+  //   const hash = await bcrypt.hash(secret, 12);
+  //   return hash;
+  // }
 
-  const valid = await main();
-  console.log(valid, "----------3333", clientSecret, client.client_secret_hash)
+  // const valid = await main();
+  // return valid ? client : null;
+
+  const bcrypt = require('bcrypt');
+  console.log(client.client_secret_hash, "clientSecret, client.client_secret_hash------------------");
+  const valid = await bcrypt.compare(clientSecret, client.client_secret_hash);
+  console.log(valid, "---------------222222222222");
   return valid ? client : null;
 }
 
@@ -39,12 +40,10 @@ async function getClient(clientId, clientSecret) {
 // shows login if needed or immediately issues code if session exists
 // ─────────────────────────────────────────────────────────
 async function authorize(req, res) {
-  console.log("-------------11111111111111111-----------", req.validated)
   const {
     client_id, redirect_uri, response_type,
     scope, state, code_challenge, code_challenge_method,
   } = req.validated;
-
   try {
     // 1. Validate client and redirect_uri
     const clientResult = await query('SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE', [client_id]);
@@ -77,11 +76,10 @@ async function authorize(req, res) {
       code_challenge,
       code_challenge_method,
     };
-    // await redis.setex(`pending_auth:${pendingSessionId}`, 600, JSON.stringify(pendingData));
+    await redis.setex(`pending_auth:${pendingSessionId}`, 600, JSON.stringify(pendingData));
 
     // 4. Check if user already has SSO session
     const sessionToken = req.cookies?.sso_session;
-    console.log(sessionToken, "sessionToken------------", req.cookies)
     if (sessionToken) {
       const sessResult = await query(
         `SELECT s.user_id, u.email, u.name
@@ -90,7 +88,6 @@ async function authorize(req, res) {
         [sessionToken]
       );
       const existingSession = sessResult.rows[0];
-      console.log(existingSession, "existingSession------------")
       if (existingSession) {
         // Check consent
         const consentResult = await query(
@@ -98,8 +95,7 @@ async function authorize(req, res) {
           [existingSession.user_id, client_id]
         );
         const granted = consentResult.rows[0];
-        const hasConsent = granted &&
-          requestedScopes.every(s => granted.scopes.includes(s));
+        const hasConsent = granted && requestedScopes.every(s => granted.scopes.includes(s));
 
         if (hasConsent) {
           // Issue code immediately - no re-login needed
@@ -205,9 +201,7 @@ async function consent(req, res) {
 // grant_type: authorization_code  |  refresh_token
 // ─────────────────────────────────────────────────────────
 async function token(req, res) {
-  console.log("3333333333333-----")
   const { grant_type } = req.validated;
-
   if (grant_type === 'authorization_code') {
     return handleAuthorizationCode(req, res);
   }
@@ -234,11 +228,7 @@ async function handleAuthorizationCode(req, res) {
     if (cached) {
       codeData = JSON.parse(cached);
     } else {
-      const dbResult = await query(
-        `SELECT * FROM authorization_codes
-         WHERE code = $1 AND used = FALSE AND expires_at > NOW()`,
-        [code]
-      );
+      const dbResult = await query(`SELECT * FROM authorization_codes WHERE code = $1 AND used = FALSE AND expires_at > NOW()`, [code]);
       if (!dbResult.rows[0]) {
         return res.status(400).json({ error: 'invalid_grant', message: 'Invalid or expired authorization code' });
       }
@@ -273,10 +263,7 @@ async function handleAuthorizationCode(req, res) {
     await redis.del(`auth_code:${code}`);
 
     // 7. Fetch user
-    const userResult = await query(
-      'SELECT id, email, name, email_verified FROM users WHERE id = $1',
-      [codeData.userId]
-    );
+    const userResult = await query('SELECT id, email, name, email_verified FROM users WHERE id = $1', [codeData.userId]);
     const user = userResult.rows[0];
     if (!user) {
       return res.status(400).json({ error: 'invalid_grant', message: 'User not found' });
@@ -310,6 +297,7 @@ async function handleRefreshToken(req, res) {
 
     // 2. Hash the incoming token to find it in DB
     const tokenHash = hashToken(refresh_token);
+    console.log(tokenHash, "tokenHashtokenHashtokenHashtokenHash-----", refresh_token)
 
     const tokenResult = await query(
       `SELECT * FROM refresh_tokens
@@ -524,6 +512,7 @@ async function issueTokenPair(user, clientId, scopes, existingFamilyId = null) {
   // Refresh Token (opaque)
   const refreshTokenRaw = generateToken(48);
   const refreshTokenHash = hashToken(refreshTokenRaw);
+  console.log(refreshTokenHash, "refreshTokenHashrefreshTokenHashrefreshTokenHash-----", refreshTokenRaw)
   const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL * 1000);
 
   await query(

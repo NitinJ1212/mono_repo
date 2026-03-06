@@ -73,15 +73,32 @@ function validate(schema) {
   };
 }
 
+// function validateQuery(schema) {
+//   return (req, res, next) => {
+//     const result = schema.safeParse(req.query);
+//     if (!result.success) {
+//       return res.status(400).json({
+//         error: 'invalid_request',
+//         details: result.error.flatten().fieldErrors,
+//       });
+//     }
+//     console.log(schema.safeParse(req.query), "-----------------==", req.query);
+//     req.validated = result.data;
+//     next();
+//   };
+// }
+
 function validateQuery(schema) {
   return (req, res, next) => {
-    const result = schema.safeParse(req.query);
+    const result = schema.passthrough().safeParse(req.query);
+
     if (!result.success) {
       return res.status(400).json({
-        error: 'invalid_request',
+        error: "invalid_request",
         details: result.error.flatten().fieldErrors,
       });
     }
+    // console.log(result, "-----------------==", req.query);
     req.validated = result.data;
     next();
   };

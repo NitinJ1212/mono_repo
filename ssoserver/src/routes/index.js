@@ -92,10 +92,7 @@ router.post('/oauth/token', tokenLimiter, validate(tokenSchema), oauthCtrl.token
 
 // Revoke a token (RFC 7009)
 // POST /oauth/revoke
-router.post('/oauth/revoke',
-  validate(revokeSchema),
-  oauthCtrl.revoke
-);
+router.post('/oauth/revoke', validate(revokeSchema), oauthCtrl.revoke);
 
 // Introspect a token (RFC 7662) — for resource servers
 // POST /oauth/introspect
@@ -105,10 +102,7 @@ router.post('/oauth/introspect',
 
 // OIDC userinfo — get user claims from access token
 // GET /oauth/userinfo
-router.get('/oauth/userinfo',
-  authenticate,
-  oauthCtrl.userinfo
-);
+router.get('/oauth/userinfo', authenticate, oauthCtrl.userinfo);
 
 // ─────────────────────────────────────────────────────────
 // ADMIN ROUTES  (protect with your own admin auth in production)
