@@ -521,6 +521,8 @@ async function issueTokenPair(user, clientId, scopes, existingFamilyId = null) {
     [refreshTokenHash, user.id, clientId, Array.isArray(scopes) ? scopes : scopes.split(' '), familyId, refreshExpiresAt]
   );
 
+  //   await query(`INSERT INTO user_client_sessions (user_id, client_id) VALUES ($1, $2) ON CONFLICT (user_id, client_id) DO NOTHING`,
+  //   [user.id, clientId]);
   // ID Token (if openid scope)
   let idToken = null;
   if (scopeStr.includes('openid')) {

@@ -139,4 +139,71 @@ router.delete('/admin/clients/:clientId', adminCtrl.deleteClient);
 // GET /admin/audit-logs
 router.get('/admin/audit-logs', adminCtrl.auditLogs);
 
+
+
+app.post('/backchannel-logout', async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'missing user_id' });
+  }
+
+  // Destroy all local sessions for this user
+  // If using express-session with DB store:
+  await destroyUserSessions(user_id);
+
+  // If using JWT only — blacklist their tokens locally
+  // or just set a flag in your DB/Redis
+  await redis.setex(`logged_out:${user_id}`, 3600, '1');
+
+  console.log(`User ${user_id} logged out via SSO back-channel`);
+  return res.status(200).json({ ok: true });
+});
+
+// In your auth middleware on client app — check the flag
+async function clientAuthMiddleware(req, res, next) {
+  const userId = req.user?.id;
+  if (userId) {
+    const loggedOut = await redis.get(`logged_out:${userId}`);
+    if (loggedOut) {
+      req.session.destroy();
+      return res.status(401).json({ error: 'session_terminated', message: 'You have been logged out' });
+    }
+  }
+  next();
+}
+
+
+
+
+// ## Complete Flow After the Fix
+// ```
+// User on App A → clicks Logout
+//         │
+//         ▼
+// App A → POST /oauth/revoke (kills refresh token)
+//         │
+//         ▼
+// App A → GET /auth/logout (SSO server)
+//         │
+//         ├── DELETE sessions row
+//         ├── UPDATE refresh_tokens SET revoked_at (all)
+//         ├── SELECT all client logout_uris for this user
+//         │
+//         ├──→ POST http://app-b.com/backchannel-logout { user_id }
+//         │         └── App B destroys local session ✅
+//         │
+//         ├──→ POST http://app-c.com/backchannel-logout { user_id }
+//         │         └── App C destroys local session ✅
+//         │
+//         └── DELETE user_client_sessions
+//         │
+//         ▼
+// App A → clears its own session + cookies
+//         │
+//         ▼
+// All apps logged out immediately ✅
+
+
+
 module.exports = router;

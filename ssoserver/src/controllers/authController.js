@@ -315,6 +315,66 @@ async function logout(req, res) {
     return res.status(500).json({ error: 'server_error' });
   }
 }
+async function logouts(req, res) {
+  const sessionToken = req.cookies?.sso_session;
+
+  if (sessionToken) {
+    const sessResult = await query(
+      'SELECT user_id FROM sessions WHERE session_token = $1',
+      [sessionToken]
+    );
+    const session = sessResult.rows[0];
+
+    if (session) {
+      // 1. Delete SSO session
+      await query('DELETE FROM sessions WHERE session_token = $1', [sessionToken]);
+
+      // 2. Revoke all refresh tokens
+      await query(
+        'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
+        [session.user_id]
+      );
+
+      // 3. Find all clients this user is logged into
+      const clientsResult = await query(
+        `SELECT c.client_id, c.logout_uri
+         FROM user_client_sessions ucs
+         JOIN clients c ON c.client_id = ucs.client_id
+         WHERE ucs.user_id = $1 AND c.logout_uri IS NOT NULL`,
+        [session.user_id]
+      );
+
+      // 4. Notify each client (fire and forget — don't wait)
+      for (const client of clientsResult.rows) {
+        notifyClientLogout(client.logout_uri, session.user_id)
+          .catch(err => console.error(`Logout notify failed for ${client.client_id}:`, err.message));
+      }
+
+      // 5. Clean up user_client_sessions
+      await query(
+        'DELETE FROM user_client_sessions WHERE user_id = $1',
+        [session.user_id]
+      );
+
+      await auditLog({ userId: session.user_id, eventType: 'auth.logout', req });
+    }
+  }
+
+  res.clearCookie('sso_session', { httpOnly: true, secure: true, sameSite: 'lax' });
+
+  const { post_logout_redirect_uri } = req.query;
+  if (post_logout_redirect_uri) return res.redirect(post_logout_redirect_uri);
+  return res.status(200).json({ message: 'Logged out successfully' });
+}
+
+// ─── Send logout notification to client app ───
+async function notifyClientLogout(logoutUri, userId) {
+  const axios = require('axios');
+  await axios.post(logoutUri, { user_id: userId }, {
+    timeout: 5000,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
 
 // ─── SESSION LIST (user can see active sessions) ──────────
 // GET /auth/sessions  (requires authenticate)
