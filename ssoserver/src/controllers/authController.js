@@ -113,24 +113,21 @@ async function login(req, res) {
 
     await auditLog({ userId: user.id, eventType: 'auth.login_success', req });
 
-    console.log("2222222222222222s--- auth session_id", session_id)
     // If this login is part of an OAuth flow (session_id passed from /authorize)
     if (session_id) {
       const pendingAuth = await redis.get(`pending_auth:${session_id}`);
-      console.log("3333333333333333333--- auth pendingAuth", pendingAuth)
       if (pendingAuth) {
         const authData = JSON.parse(pendingAuth);
         const code = await issueAuthCode(user.id, authData);
         await redis.del(`pending_auth:${session_id}`);
-        setSessionCookie(res, sessionToken);
+        // setSessionCookie(res, sessionToken);
         return res.status(200).json({
           redirect_uri: `${authData.redirect_uri}?code=${code}&state=${authData.state}`,
         });
       }
     }
-
     // Plain login (not OAuth flow)
-    setSessionCookie(res, sessionToken);
+    // setSessionCookie(res, sessionToken);
     return res.status(200).json({
       message: 'Login successful',
       user: { id: user.id, email: user.email, name: user.name },
@@ -188,14 +185,14 @@ async function mfaVerify(req, res) {
         const authData = JSON.parse(pendingAuth);
         const code = await issueAuthCode(userId, authData);
         await redis.del(`pending_auth:${oauthSessionId}`);
-        setSessionCookie(res, sessionToken);
+        // setSessionCookie(res, sessionToken);
         return res.status(200).json({
           redirect_uri: `${authData.redirect_uri}?code=${code}&state=${authData.state}`,
         });
       }
     }
 
-    setSessionCookie(res, sessionToken);
+    // setSessionCookie(res, sessionToken);
     return res.status(200).json({ message: 'MFA verified', user: { id: user.id, email: user.email } });
 
   } catch (err) {

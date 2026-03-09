@@ -16,7 +16,7 @@ function createLimiter({ windowMs, max, message }) {
 // ─── Login: 5 attempts per 15 min per IP ─────
 const loginLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: 'Too many login attempts. Try again in 15 minutes.',
 });
 

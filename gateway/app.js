@@ -5,7 +5,19 @@ const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware
 
 const app = express();
 
-app.use(cors());
+// ─── Single CORS config (remove the duplicate) ───────────────────────────────
+const corsOptions = {
+    origin: 'http://localhost:5174',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+};
+app.use(cors(corsOptions));
+
+// ─── CRITICAL: Handle OPTIONS preflight BEFORE proxy middleware ───────────────
+// Without this, the proxy swallows preflight requests and the browser sees a CORS error
+// app.options('/(.*)', cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -14,13 +26,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// app.use('/api/auth', createProxyMiddleware({
-//     target: process.env.AUTH_SERVICE,
-//     changeOrigin: true,
-//     pathRewrite: {
-//         '^/api/auth': '',
-//     }
-// }));
 app.use('/api/auth', createProxyMiddleware({
     target: process.env.AUTH_SERVICE,
     changeOrigin: true,
@@ -28,9 +33,10 @@ app.use('/api/auth', createProxyMiddleware({
         '^/api/auth': '',
     },
     on: {
-        proxyReq: fixRequestBody,  // 👈 This fixes the body forwarding
+        proxyReq: fixRequestBody,
     }
 }));
+
 app.use('/api/auth-sso', createProxyMiddleware({
     target: process.env.AUTH_SSO_SERVICE,
     changeOrigin: true,
@@ -38,7 +44,7 @@ app.use('/api/auth-sso', createProxyMiddleware({
         '^/api/auth-sso': '',
     },
     on: {
-        proxyReq: fixRequestBody,  // 👈 This fixes the body forwarding
+        proxyReq: fixRequestBody,
     }
 }));
 

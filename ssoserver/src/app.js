@@ -3,17 +3,17 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-const express      = require('express');
-const helmet       = require('helmet');
-const cors         = require('cors');
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
-const { loadKeys }       = require('./config/jwt');
+const { loadKeys } = require('./config/jwt');
 const { getPool, getRedis } = require('./db');
-const routes             = require('./routes');
+const routes = require('./routes');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Security Headers ─────────────────────────
@@ -22,10 +22,15 @@ app.set('trust proxy', 1);
 
 // ─── CORS ─────────────────────────────────────
 app.use(cors({
-  origin:      process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  origin: [
+    "http://localhost:5174", // frontend
+    "http://localhost:3000", // gateway (old)
+    "http://localhost:5000", // gateway (actual port — match your gateway PORT env var)
+  ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
 }));
-
 // ─── Body parsers ─────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
