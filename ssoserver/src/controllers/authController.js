@@ -12,6 +12,7 @@ const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 // ─── REGISTER ────────────────────────────────────────────
 // POST /auth/register
 async function register(req, res) {
+  console.log(req.validated, "-----------------:::::::::: register req.validated")
   const { email, password, name } = req.validated;
   try {
     // Check if email exists

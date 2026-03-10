@@ -60,7 +60,6 @@ const clientRegisterSchema = z.object({
 
 // Middleware factory
 function validate(schema) {
-  console.log("33333333333333333-------------")
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {

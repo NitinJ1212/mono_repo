@@ -37,6 +37,17 @@ app.use('/api/auth', createProxyMiddleware({
     }
 }));
 
+// app.use('/api/client-sso', createProxyMiddleware({
+//     target: process.env.AUTH_SSO_SERVICE,
+//     changeOrigin: true,
+//     pathRewrite: {
+//         '^/api/client-sso': '',
+//     },
+//     on: {
+//         proxyReq: fixRequestBody,
+//     }
+// }));
+
 app.use('/api/auth-sso', createProxyMiddleware({
     target: process.env.AUTH_SSO_SERVICE,
     changeOrigin: true,

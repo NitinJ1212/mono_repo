@@ -30,7 +30,7 @@ router.get('/.well-known/jwks.json', discoveryCtrl.jwks);
 
 // Register new user
 // POST /auth/register
-router.post('/auth/register', authCtrl.register);
+router.post('/auth/register', registerLimiter, validate(registerSchema), authCtrl.register);
 
 // Login with email + password
 // POST /auth/login
