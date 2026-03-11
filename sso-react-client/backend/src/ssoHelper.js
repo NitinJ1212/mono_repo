@@ -5,14 +5,13 @@ const axios = require('axios');
 const SSO_SERVER = process.env.SSO_SERVER || 'http://localhost:5000/api/auth-sso';
 const CLIENT_ID = process.env.CLIENT_ID || '';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || '';
-const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:4000/auth/callback';
+const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:5173/auth/callback';
 
 // ── Build SSO authorize URL with PKCE ─────────
 function buildAuthUrl() {
   const codeVerifier = crypto.randomBytes(64).toString('base64url');
   const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
   const state = crypto.randomBytes(16).toString('hex');
-
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,

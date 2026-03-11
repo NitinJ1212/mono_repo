@@ -119,7 +119,6 @@ async function authorize(req, res) {
         });
       }
     }
-
     // 5. No session → show login
     return res.status(200).json({
       action: 'login_required',

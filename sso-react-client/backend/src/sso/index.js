@@ -2,11 +2,12 @@ import axios from "axios";
 
 async function loginWithSSO(url) {
     try {
+        console.log(url, "-----------url-----------")
         const response = await axios.get(url, { withCredentials: true });
-        return response.data.session_id || null;
+        return response.data || null;
     } catch (error) {
-        console.log(error)
-        return error.response?.data?.message || error.message || { error: "SSO login failed" };
+        console.log(error.response)
+        return error.response?.data || error.message || { error: "SSO login failed" };
     }
 }
 

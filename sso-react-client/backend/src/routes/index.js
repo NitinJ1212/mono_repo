@@ -18,13 +18,10 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // ─────────────────────────────────────────────
 router.get('/api/auth/login', async (req, res) => {
   const { url, state, codeVerifier } = buildAuthUrl();
-  // Save PKCE + state in session
   req.session.oauthState = state;
   req.session.pkceCodeVerifier = codeVerifier;
   const sessionId = await loginWithSSO(url);
-  console.log(sessionId, "session ID:::::::::::::::")
-  // Return URL to React — React will do window.location.href = url
-  res.json(sessionId);
+  return res.json(sessionId);
 });
 
 // ─────────────────────────────────────────────

@@ -1,10 +1,10 @@
 // src/controllers/adminController.js
 // Admin APIs to register/manage Service Provider clients
-const bcrypt     = require('bcrypt');
+const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
-const { query }  = require('../db');
+const { query } = require('../db');
 const { generateToken } = require('../utils/crypto');
-const { auditLog }      = require('../utils/audit');
+const { auditLog } = require('../utils/audit');
 
 // ─── CREATE CLIENT ────────────────────────────
 // POST /admin/clients
@@ -12,9 +12,10 @@ async function createClient(req, res) {
   const { name, redirect_uris, allowed_scopes, grant_types } = req.validated;
 
   try {
-    const clientId     = `client_${generateToken(12)}`;
+    const clientId = `client_${generateToken(12)}`;
     const clientSecret = generateToken(32);
-    const secretHash   = await bcrypt.hash(clientSecret, 12);
+    console.log(clientSecret, "clientSecret=---------", clientId)
+    const secretHash = await bcrypt.hash(clientSecret, 12);
 
     const result = await query(
       `INSERT INTO clients
@@ -27,7 +28,7 @@ async function createClient(req, res) {
         name,
         redirect_uris,
         allowed_scopes || ['openid', 'profile', 'email'],
-        grant_types    || ['authorization_code', 'refresh_token'],
+        grant_types || ['authorization_code', 'refresh_token'],
       ]
     );
 
@@ -105,7 +106,7 @@ async function updateClient(req, res) {
 async function rotateSecret(req, res) {
   try {
     const newSecret = generateToken(32);
-    const newHash   = await bcrypt.hash(newSecret, 12);
+    const newHash = await bcrypt.hash(newSecret, 12);
 
     const result = await query(
       'UPDATE clients SET client_secret_hash = $1 WHERE client_id = $2 RETURNING client_id',
@@ -117,7 +118,7 @@ async function rotateSecret(req, res) {
 
     return res.status(200).json({
       message: 'Secret rotated. Save this — it will NOT be shown again.',
-      client_id:     req.params.clientId,
+      client_id: req.params.clientId,
       client_secret: newSecret,
     });
   } catch (err) {
@@ -146,11 +147,11 @@ async function deleteClient(req, res) {
 async function auditLogs(req, res) {
   const { limit = 50, offset = 0, event_type, user_id } = req.query;
   try {
-    let sql    = 'SELECT * FROM audit_logs WHERE 1=1';
+    let sql = 'SELECT * FROM audit_logs WHERE 1=1';
     const vals = [];
     if (event_type) { vals.push(event_type); sql += ` AND event_type = $${vals.length}`; }
-    if (user_id)    { vals.push(user_id);    sql += ` AND user_id = $${vals.length}`; }
-    vals.push(parseInt(limit));  sql += ` ORDER BY created_at DESC LIMIT $${vals.length}`;
+    if (user_id) { vals.push(user_id); sql += ` AND user_id = $${vals.length}`; }
+    vals.push(parseInt(limit)); sql += ` ORDER BY created_at DESC LIMIT $${vals.length}`;
     vals.push(parseInt(offset)); sql += ` OFFSET $${vals.length}`;
 
     const result = await query(sql, vals);

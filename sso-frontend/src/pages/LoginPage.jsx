@@ -203,7 +203,7 @@ export default function LoginPage() {
             )}
 
             {/* SSO Login Button */}
-            <button
+            {/* <button
               onClick={handleLogin}
               disabled={busy}
               onMouseEnter={() => setBtnHover(true)}
@@ -230,8 +230,19 @@ export default function LoginPage() {
                   <span style={{ marginLeft: 'auto', opacity: .5 }}>↗</span>
                 </div>
               )}
-            </button>
-
+            </button> */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => navigate('/signup', { replace: true })} style={{
+                ...s.btn,
+                ...(btnHover && !busy ? s.btnHover : {}),
+                ...(busy ? s.btnBusy : {}),
+              }}>Signup</button>
+              <button onClick={() => navigate('/register', { replace: true })} style={{
+                ...s.btn,
+                ...(btnHover && !busy ? s.btnHover : {}),
+                ...(busy ? s.btnBusy : {}),
+              }}>Client Register</button>
+            </div>
             {/* OAuth flow trace */}
             <div style={s.flowRow}>
               {[

@@ -12,7 +12,6 @@ const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 // ─── REGISTER ────────────────────────────────────────────
 // POST /auth/register
 async function register(req, res) {
-  console.log(req.validated, "-----------------:::::::::: register req.validated")
   const { email, password, name } = req.validated;
   try {
     // Check if email exists
@@ -53,7 +52,7 @@ async function login(req, res) {
     const result = await query(`SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
               status, failed_attempts, locked_until FROM users WHERE email = $1`, [email.toLowerCase()]);
     const user = result.rows[0];
-
+    console.log(user, "uerleeeeeeeeeeeee")
     // Always same error to prevent user enumeration
     if (!user) {
       await auditLog({ eventType: 'auth.login_failed', req, metadata: { reason: 'user_not_found', email } });
@@ -76,7 +75,9 @@ async function login(req, res) {
 
     // Verify password
     const valid = await verifyPassword(password, user.password_hash);
+    console.log(valid, "1111111111111111111uerleeeeeeeeeeeee")
     if (!valid) {
+
       // Increment failed attempts; lock after 5
       const newAttempts = (user.failed_attempts || 0) + 1;
       const lockUntil = newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
@@ -114,6 +115,7 @@ async function login(req, res) {
 
     await auditLog({ userId: user.id, eventType: 'auth.login_success', req });
 
+    console.log(valid, "1111111111111111111uerleeeeeeeeeeeee")
     // If this login is part of an OAuth flow (session_id passed from /authorize)
     if (session_id) {
       const pendingAuth = await redis.get(`pending_auth:${session_id}`);
@@ -124,6 +126,11 @@ async function login(req, res) {
         // setSessionCookie(res, sessionToken);
         return res.status(200).json({
           redirect_uri: `${authData.redirect_uri}?code=${code}&state=${authData.state}`,
+        });
+      } else {
+        return res.status(400).json({
+          message: 'session_id is not Valid successful',
+          session_id: session_id,
         });
       }
     }
@@ -450,11 +457,7 @@ async function issueAuthCode(userId, authData) {
   );
 
   // Also cache in Redis for fast lookup
-  await redis.setex(
-    `auth_code:${code}`,
-    parseInt(process.env.AUTH_CODE_TTL) || 60,
-    JSON.stringify({ userId, ...authData })
-  );
+  await redis.setex(`auth_code:${code}`, parseInt(process.env.AUTH_CODE_TTL) || 60, JSON.stringify({ userId, ...authData }));
 
   return code;
 }

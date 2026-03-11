@@ -110,10 +110,7 @@ router.get('/oauth/userinfo', authenticate, oauthCtrl.userinfo);
 
 // Register a new Service Provider client app
 // POST /admin/clients
-router.post('/admin/clients',
-  validate(clientRegisterSchema),
-  adminCtrl.createClient
-);
+router.post('/admin/clients', validate(clientRegisterSchema), adminCtrl.createClient);
 
 // List all client apps
 // GET /admin/clients

@@ -23,9 +23,12 @@ export default function LoginPage() {
     setLoggingIn(true);
     try {
       const sessionId = await login();
-      console.log(sessionId, "333333333333")
-      window.location.href = `http://localhost:5174/login?session_id=${sessionId}`;
-      console.log(sessionId, "sessionID ::::::::::")
+      if (sessionId?.session_id) {
+        window.location.href = `http://localhost:5174/login?session_id=${sessionId?.session_id}`;
+      } else {
+        setLoggingIn(false);
+        alert("Login failed. Please try again.Error :: " + JSON.stringify(sessionId?.message));
+      }
     } catch (err) {
       setLoggingIn(false);
     }

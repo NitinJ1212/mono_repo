@@ -174,8 +174,8 @@ function SuccessScreen({ result, onReset }) {
       <p style={s.successSub}>Save these credentials — secret <strong style={{ color: '#fb7185' }}>dikhega sirf ek baar</strong></p>
 
       <div style={s.credBox}>
-        <CredRow label="Client ID" val={result.client_id} onCopy={() => copy('id', result.client_id)} copied={copied === 'id'} />
-        <CredRow label="Client Secret" val={result.client_secret} onCopy={() => copy('sec', result.client_secret)} copied={copied === 'sec'} secret />
+        <CredRow label="Client ID" val={result.client.client_id} onCopy={() => copy('id', result.client.client_id)} copied={copied === 'id'} />
+        <CredRow label="Client Secret" val={result.client.client_secret} onCopy={() => copy('sec', result.client.client_secret)} copied={copied === 'sec'} secret />
         {result.name && <CredRow label="App Name" val={result.name} />}
       </div>
 
