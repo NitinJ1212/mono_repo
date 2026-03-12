@@ -36,6 +36,7 @@ const tokenSchema = z.discriminatedUnion('grant_type', [
     client_id: z.string().min(1),
     client_secret: z.string().min(1),
     code_verifier: z.string().min(43).max(128),
+    logout_uri: z.string().url(),
   }),
   z.object({
     grant_type: z.literal('refresh_token'),

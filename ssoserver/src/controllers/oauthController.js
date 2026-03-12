@@ -39,10 +39,7 @@ async function getClient(clientId, clientSecret) {
 // shows login if needed or immediately issues code if session exists
 // ─────────────────────────────────────────────────────────
 async function authorize(req, res) {
-  const {
-    client_id, redirect_uri, response_type,
-    scope, state, code_challenge, code_challenge_method,
-  } = req.validated;
+  const { client_id, redirect_uri, response_type, scope, state, code_challenge, code_challenge_method } = req.validated;
   try {
     // 1. Validate client and redirect_uri
     const clientResult = await query('SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE', [client_id]);
@@ -80,19 +77,11 @@ async function authorize(req, res) {
     // 4. Check if user already has SSO session
     const sessionToken = req.cookies?.sso_session;
     if (sessionToken) {
-      const sessResult = await query(
-        `SELECT s.user_id, u.email, u.name
-         FROM sessions s JOIN users u ON u.id = s.user_id
-         WHERE s.session_token = $1 AND s.expires_at > NOW()`,
-        [sessionToken]
-      );
+      const sessResult = await query(`SELECT s.user_id, u.email, u.name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.session_token = $1 AND s.expires_at > NOW()`, [sessionToken]);
       const existingSession = sessResult.rows[0];
       if (existingSession) {
         // Check consent
-        const consentResult = await query(
-          'SELECT scopes FROM consent_grants WHERE user_id = $1 AND client_id = $2',
-          [existingSession.user_id, client_id]
-        );
+        const consentResult = await query('SELECT scopes FROM consent_grants WHERE user_id = $1 AND client_id = $2', [existingSession.user_id, client_id]);
         const granted = consentResult.rows[0];
         const hasConsent = granted && requestedScopes.every(s => granted.scopes.includes(s));
 
