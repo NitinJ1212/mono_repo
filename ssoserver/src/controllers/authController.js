@@ -52,7 +52,6 @@ async function login(req, res) {
     const result = await query(`SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
               status, failed_attempts, locked_until FROM users WHERE email = $1`, [email.toLowerCase()]);
     const user = result.rows[0];
-    console.log(user, "uerleeeeeeeeeeeee")
     // Always same error to prevent user enumeration
     if (!user) {
       await auditLog({ eventType: 'auth.login_failed', req, metadata: { reason: 'user_not_found', email } });
@@ -75,7 +74,6 @@ async function login(req, res) {
 
     // Verify password
     const valid = await verifyPassword(password, user.password_hash);
-    console.log(valid, "1111111111111111111uerleeeeeeeeeeeee")
     if (!valid) {
 
       // Increment failed attempts; lock after 5
@@ -115,7 +113,6 @@ async function login(req, res) {
 
     await auditLog({ userId: user.id, eventType: 'auth.login_success', req });
 
-    console.log(valid, "1111111111111111111uerleeeeeeeeeeeee")
     // If this login is part of an OAuth flow (session_id passed from /authorize)
     if (session_id) {
       const pendingAuth = await redis.get(`pending_auth:${session_id}`);
@@ -287,10 +284,7 @@ async function logout(req, res) {
 
     if (sessionToken) {
       // Get session to find user
-      const sessResult = await query(
-        'SELECT user_id FROM sessions WHERE session_token = $1',
-        [sessionToken]
-      );
+      const sessResult = await query('SELECT user_id FROM sessions WHERE session_token = $1', [sessionToken]);
       const session = sessResult.rows[0];
 
       if (session) {
@@ -298,10 +292,7 @@ async function logout(req, res) {
         await query('DELETE FROM sessions WHERE session_token = $1', [sessionToken]);
 
         // Revoke ALL refresh tokens for user
-        await query(
-          'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
-          [session.user_id]
-        );
+        await query('UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL', [session.user_id]);
 
         await auditLog({ userId: session.user_id, eventType: 'auth.logout', req });
       }
@@ -372,6 +363,31 @@ async function logouts(req, res) {
   return res.status(200).json({ message: 'Logged out successfully' });
 }
 
+async function allLogout(req, res) {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'missing user_id' });
+  }
+
+  // Destroy all local sessions for this user
+  // If using express-session with DB store:
+  // await destroyUserSessions(user_id);
+
+  // If using JWT only — blacklist their tokens locally
+  // or just set a flag in your DB/Redis
+  await redis.setex(`logged_out:${user_id}`, 3600, '1');
+
+  console.log(`User ${user_id} logged out via SSO back-channel`);
+  return res.status(200).json({ ok: true });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  backchannel-logout.js
+//  Route: POST /backchannel-logout
+//  Called by SSO server when user logs out globally
+// ────────────────────────────────────────────────────────────
+
 // ─── Send logout notification to client app ───
 async function notifyClientLogout(logoutUri, userId) {
   const axios = require('axios');
@@ -426,7 +442,6 @@ async function createSession(user, req) {
   const expiresAt = new Date(Date.now() + SESSION_TTL * 1000);
   const ip = req.ip || req.headers['x-forwarded-for'] || null;
   const ua = req.headers['user-agent'] || null;
-  console.log(sessionId, "-----------------::::::::::")
   await query(
     `INSERT INTO sessions (id, user_id, session_token, ip_address, user_agent, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -440,7 +455,6 @@ async function issueAuthCode(userId, authData) {
   const { generateCode } = require('../utils/crypto');
   const code = generateCode();
   const expiresAt = new Date(Date.now() + (parseInt(process.env.AUTH_CODE_TTL) || 60) * 1000);
-  console.log(userId, authData, "-----------------:::::::::: userId, authData in issueAuthCode")
   await query(
     `INSERT INTO authorization_codes
        (code, user_id, client_id, redirect_uri, scopes, code_challenge, expires_at)
@@ -473,6 +487,6 @@ function setSessionCookie(res, sessionToken) {
 
 module.exports = {
   register, login, mfaVerify, mfaSetup, mfaConfirm,
-  logout, getSessions, revokeSession,
+  logout, allLogout, getSessions, revokeSession,
   issueAuthCode, createSession, setSessionCookie,
 };

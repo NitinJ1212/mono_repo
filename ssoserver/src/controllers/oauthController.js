@@ -30,7 +30,6 @@ async function getClient(clientId, clientSecret) {
   const bcrypt = require('bcrypt');
   console.log(client.client_secret_hash, "clientSecret, client.client_secret_hash------------------");
   const valid = await bcrypt.compare(clientSecret, client.client_secret_hash);
-  console.log(valid, "---------------222222222222");
   return valid ? client : null;
 }
 
@@ -252,6 +251,7 @@ async function handleAuthorizationCode(req, res) {
     }
 
     // 5. PKCE: verify code_verifier against stored code_challenge
+    console.log(codeData.code_challenge, "codeData.code_challenge---------", code_verifier, "code_verifier---------")
     if (!verifyCodeChallenge(code_verifier, codeData.code_challenge)) {
       await auditLog({ eventType: 'oauth.pkce_failed', req, metadata: { client_id } });
       return res.status(400).json({ error: 'invalid_grant', message: 'PKCE verification failed' });
@@ -296,7 +296,6 @@ async function handleRefreshToken(req, res) {
 
     // 2. Hash the incoming token to find it in DB
     const tokenHash = hashToken(refresh_token);
-    console.log(tokenHash, "tokenHashtokenHashtokenHashtokenHash-----", refresh_token)
 
     const tokenResult = await query(
       `SELECT * FROM refresh_tokens
@@ -400,8 +399,9 @@ async function revoke(req, res) {
             eventType: 'oauth.access_token_revoked', req,
           });
         }
-      } catch (_) {
+      } catch (err) {
         // Token invalid — RFC says always return 200
+        console.log(err)
       }
     }
 
@@ -511,7 +511,6 @@ async function issueTokenPair(user, clientId, scopes, existingFamilyId = null) {
   // Refresh Token (opaque)
   const refreshTokenRaw = generateToken(48);
   const refreshTokenHash = hashToken(refreshTokenRaw);
-  console.log(refreshTokenHash, "refreshTokenHashrefreshTokenHashrefreshTokenHash-----", refreshTokenRaw)
   const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL * 1000);
 
   await query(

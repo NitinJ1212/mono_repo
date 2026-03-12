@@ -29,10 +29,7 @@ async function verifyPassword(password, hash) {
 // ─── PKCE ─────────────────────────────────────
 // Verify: SHA256(code_verifier) == code_challenge (base64url)
 function verifyCodeChallenge(codeVerifier, codeChallenge) {
-  const hash = crypto
-    .createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url');
+  const hash = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
   return hash === codeChallenge;
 }
 
