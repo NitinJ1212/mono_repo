@@ -252,20 +252,24 @@ async function handleAuthorizationCode(req, res) {
 
     // 6. Mark code as used (prevent replay)
     await query('UPDATE authorization_codes SET used = TRUE WHERE code = $1', [code]);
-    const logout_uri = await redis.get(`logout_uri:${code}`);
     await redis.del(`auth_code:${code}`);
 
     // 7. Fetch user
-    const userResult = await query('SELECT id, email, name, email_verified FROM users WHERE id = $1', [codeData.userId]);
+    const userResult = await query('SELECT id, email, name, email_verified,logout_uri FROM users WHERE id = $1', [codeData.userId]);
     const user = userResult.rows[0];
     if (!user) {
       return res.status(400).json({ error: 'invalid_grant', message: 'User not found' });
     }
 
+    const authData = await redis.get(`logout_uri:${code}`);
+    console.log(authData, "--------authdata")
+    const logout_uri = JSON.parse(authData);
+    const value = "{http://localhost:5173/,http://localhost:5174/}";
+    const arr = user?.logout_uri.slice(1, -1).split(",");
     // 8. Issue tokens
     const tokens = await issueTokenPair(user, client_id, codeData.scopes);
-
-    await query('UPDATE clients SET logout_uri = $1 WHERE code = $2', [logout_uri, code]);
+    console.log('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id], "queryryyyyyyyyyyyyyyy", authData, "mmmmmmmmmmmmmmmmmmmmmmm:::", logout_uri, "code------------------", code)
+    await query('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id]);
     await auditLog({
       userId: user.id, clientId: client_id,
       eventType: 'oauth.token_issued', req,
