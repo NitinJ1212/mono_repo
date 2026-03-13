@@ -39,8 +39,11 @@ async function getClient(clientId, clientSecret) {
 // shows login if needed or immediately issues code if session exists
 // ─────────────────────────────────────────────────────────
 async function authorize(req, res) {
-  const { client_id, redirect_uri, response_type, scope, state, code_challenge, code_challenge_method } = req.validated;
+  const { client_id, redirect_uri, response_type, scope, state, code_challenge, code_challenge_method, logout_uri } = req.validated;
   try {
+    if (!logout_uri) {
+      return res.status(400).json({ error: 'invalid_request', message: 'Please Provide Logout URI' });
+    }
     // 1. Validate client and redirect_uri
     const clientResult = await query('SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE', [client_id]);
     const client = clientResult.rows[0];
@@ -71,6 +74,7 @@ async function authorize(req, res) {
       state,
       code_challenge,
       code_challenge_method,
+      logout_uri
     };
     await redis.setex(`pending_auth:${pendingSessionId}`, 600, JSON.stringify(pendingData));
 
@@ -248,6 +252,7 @@ async function handleAuthorizationCode(req, res) {
 
     // 6. Mark code as used (prevent replay)
     await query('UPDATE authorization_codes SET used = TRUE WHERE code = $1', [code]);
+    const logout_uri = await redis.get(`logout_uri:${code}`);
     await redis.del(`auth_code:${code}`);
 
     // 7. Fetch user
@@ -260,6 +265,7 @@ async function handleAuthorizationCode(req, res) {
     // 8. Issue tokens
     const tokens = await issueTokenPair(user, client_id, codeData.scopes);
 
+    await query('UPDATE clients SET logout_uri = $1 WHERE code = $2', [logout_uri, code]);
     await auditLog({
       userId: user.id, clientId: client_id,
       eventType: 'oauth.token_issued', req,

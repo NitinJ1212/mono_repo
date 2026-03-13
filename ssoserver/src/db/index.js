@@ -2,9 +2,9 @@
 // dotenv is loaded in app.js BEFORE this file is required.
 // Using lazy initialization so Pool is only created after env vars are loaded.
 const { Pool } = require('pg');
-const Redis    = require('ioredis');
+const Redis = require('ioredis');
 
-let _pool  = null;
+let _pool = null;
 let _redis = null;
 
 function getPool() {
@@ -16,13 +16,13 @@ function getPool() {
     : '';
 
   _pool = new Pool({
-    host:                    process.env.DB_HOST || 'localhost',
-    port:                    parseInt(process.env.DB_PORT) || 5432,
-    database:                process.env.DB_NAME || 'sso_db',
-    user:                    process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'sso_db',
+    user: process.env.DB_USER || 'postgres',
     password,
-    max:                     20,
-    idleTimeoutMillis:       30000,
+    max: 20,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
   });
 
@@ -42,8 +42,8 @@ function getRedis() {
     : undefined;
 
   _redis = new Redis({
-    host:          process.env.REDIS_HOST || 'localhost',
-    port:          parseInt(process.env.REDIS_PORT) || 6379,
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
     password,
     retryStrategy: (times) => Math.min(times * 50, 2000),
   });
@@ -56,10 +56,10 @@ function getRedis() {
 }
 
 // Proxy objects — first property access triggers lazy initialization
-const pool  = new Proxy({}, { get: (_, prop) => getPool()[prop]  });
+const pool = new Proxy({}, { get: (_, prop) => getPool()[prop] });
 const redis = new Proxy({}, { get: (_, prop) => getRedis()[prop] });
 
-const query     = (text, params) => getPool().query(text, params);
-const getClient = ()              => getPool().connect();
+const query = (text, params) => getPool().query(text, params);
+const getClient = () => getPool().connect();
 
 module.exports = { pool, query, getClient, redis, getPool, getRedis };

@@ -15,6 +15,12 @@ export default function Login() {
 
         try {
             const res = await loginUser({ email, password, ...oauth });
+            console.log(res.data.message, "res.data---")
+            if (res.data.message) {
+                alert(res.data.message);
+                setLoading(false);
+                return;
+            }
             const { redirect_uri } = res.data;
             if (redirect_uri) {
                 window.location.href = redirect_uri;

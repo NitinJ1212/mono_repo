@@ -5,7 +5,8 @@ const axios = require('axios');
 const SSO_SERVER = process.env.SSO_SERVER || 'http://localhost:5000/api/auth-sso';
 const CLIENT_ID = process.env.CLIENT_ID || '';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || '';
-const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:5173/auth/callback';
+const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:5175/auth/callback';
+const LOGOUT_URI = process.env.LOGOUT_URI || 'http://localhost:4001/api/auth/logout';
 
 // ── Build SSO authorize URL with PKCE ─────────
 function buildAuthUrl() {
@@ -20,6 +21,7 @@ function buildAuthUrl() {
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
+    logout_uri: LOGOUT_URI
   });
   return {
     url: `${SSO_SERVER}/oauth/authorize?${params}`,

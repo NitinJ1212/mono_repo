@@ -21,12 +21,18 @@ export const logoutApi = () => api.get('/auth/logout').then(r => r.data.logoutUr
 
 
 export const loginUser = async (data) => {
-  const api = axios.create({
-    baseURL: "http://localhost:5000/api/auth-sso", // SSO backend
-    withCredentials: true,
-  });
-  const response = await api.post("/auth/login", data);
-  return response;
+  try {
+    const api = axios.create({
+      baseURL: "http://localhost:5000/api/auth-sso", // SSO backend
+      withCredentials: true,
+    });
+    const response = await api.post("/auth/login", data);
+    return response;
+  }
+  catch (error) {
+    console.log("error----------====", error)
+    return error.response || { data: { error: "Login failed" } };
+  }
 };
 
 export default api;

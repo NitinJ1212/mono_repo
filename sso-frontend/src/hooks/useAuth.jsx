@@ -5,7 +5,7 @@ import { getMe, getLoginUrl, logoutApi } from '../api/auth';
 const Ctx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // On app load → check session with backend
@@ -27,6 +27,9 @@ export function AuthProvider({ children }) {
 
   async function login() {
     const url = await getLoginUrl();  // backend builds PKCE + SSO URL
+    if (url.message) {
+      alert(url.message);
+    }
     window.location.href = url;       // redirect user to SSO server
   }
 

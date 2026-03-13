@@ -24,8 +24,9 @@ const authorizeSchema = z.object({
   response_type: z.literal('code'),
   scope: z.string().min(1),
   state: z.string().min(8),
-  // code_challenge:        z.string().min(43).max(128),
-  // code_challenge_method: z.literal('S256'),
+  code_challenge: z.string().min(43).max(128),
+  code_challenge_method: z.literal('S256'),
+  logout_uri: z.string().url(),
 });
 
 const tokenSchema = z.discriminatedUnion('grant_type', [
@@ -36,7 +37,7 @@ const tokenSchema = z.discriminatedUnion('grant_type', [
     client_id: z.string().min(1),
     client_secret: z.string().min(1),
     code_verifier: z.string().min(43).max(128),
-    logout_uri: z.string().url(),
+    // logout_uri: z.string().url(),
   }),
   z.object({
     grant_type: z.literal('refresh_token'),
@@ -68,7 +69,7 @@ function validate(schema) {
         error: 'validation_error',
         details: result.error.flatten().fieldErrors,
       });
-    }
+    } 
     req.validated = result.data;
     next();
   };

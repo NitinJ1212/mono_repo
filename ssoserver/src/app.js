@@ -23,8 +23,9 @@ app.set('trust proxy', 1);
 // ─── CORS ─────────────────────────────────────
 app.use(cors({
   origin: [
-    "http://localhost:5174", // frontend
-    "http://localhost:5176", // client2
+    "http://localhost:5175", // client2
+    "http://localhost:5174", // client1
+    "http://localhost:5173", // sso
     "http://localhost:3000", // gateway (old)
     "http://localhost:5000", // gateway (actual port — match your gateway PORT env var)
   ],

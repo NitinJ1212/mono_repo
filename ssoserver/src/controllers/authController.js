@@ -46,7 +46,6 @@ async function register(req, res) {
 // POST /auth/login
 async function login(req, res) {
   const { email, password, session_id } = req.validated;
-
   try {
     // Fetch user
     const result = await query(`SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
@@ -79,10 +78,7 @@ async function login(req, res) {
       // Increment failed attempts; lock after 5
       const newAttempts = (user.failed_attempts || 0) + 1;
       const lockUntil = newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
-      await query(
-        'UPDATE users SET failed_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3',
-        [newAttempts, lockUntil, user.id]
-      );
+      await query('UPDATE users SET failed_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3', [newAttempts, lockUntil, user.id]);
       await auditLog({ userId: user.id, eventType: 'auth.login_failed', req, metadata: { reason: 'wrong_password' } });
       return res.status(401).json({ error: 'invalid_credentials', message: 'Invalid email or password' });
     }
@@ -119,6 +115,7 @@ async function login(req, res) {
       if (pendingAuth) {
         const authData = JSON.parse(pendingAuth);
         const code = await issueAuthCode(user.id, authData);
+        await redis.setex(`logout_uri:${code}`, 300, JSON.stringify({ logout_uri: pendingAuth?.logout_uri }));
         await redis.del(`pending_auth:${session_id}`);
         // setSessionCookie(res, sessionToken);
         return res.status(200).json({

@@ -17,7 +17,7 @@ app.set('trust proxy', 1);
 
 // Allow React frontend to call backend
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin:      process.env.FRONTEND_URL || 'http://localhost:5174',
   credentials: true,   // IMPORTANT: allows cookies to be sent cross-origin
 }));
 
