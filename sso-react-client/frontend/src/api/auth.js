@@ -15,9 +15,7 @@ export async function getMe() {
 
 // ── Get SSO login URL from backend ───────────
 export async function getLoginUrl() {
-  console.log("first  ---  res.data----------------")
   const res = await api.get('/auth/login');
-  console.log(res.data, "res.data----------------")
   return res.data;  // SSO authorize URL
 }
 

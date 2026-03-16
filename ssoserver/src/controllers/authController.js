@@ -115,8 +115,8 @@ async function login(req, res) {
       if (pendingAuth) {
         const authData = JSON.parse(pendingAuth);
         const code = await issueAuthCode(user.id, authData);
+        console.log(authData?.logout_uri, "00000000000000000000000")
         await redis.setex(`logout_uri:${code}`, 3000, JSON.stringify({ logout_uri: authData?.logout_uri }));
-        console.log(code, "-----------------------code")
         await redis.del(`pending_auth:${session_id}`);
         // setSessionCookie(res, sessionToken);
         return res.status(200).json({

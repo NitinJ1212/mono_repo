@@ -7,6 +7,7 @@ const CLIENT_ID = process.env.CLIENT_ID || '';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || '';
 const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:5173/auth/callback';
 const LOGOUT_URI = process.env.LOGOUT_URI || 'http://localhost:4000/api/auth/logout';
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
 // ── Build SSO authorize URL with PKCE ─────────
 function buildAuthUrl() {
@@ -72,8 +73,9 @@ async function refreshAccessToken(refreshToken) {
 
 // ── Revoke token ──────────────────────────────
 async function revokeToken(token) {
+  console.log(backendUrl, "backendUrl-----------client");
   await axios.post(`${SSO_SERVER}/oauth/revoke`,
-    new URLSearchParams({ token, client_id: CLIENT_ID, client_secret: CLIENT_SECRET }),
+    new URLSearchParams({ token, client_id: CLIENT_ID, client_secret: CLIENT_SECRET, logout_uri: backendUrl }),
     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
   );
 }

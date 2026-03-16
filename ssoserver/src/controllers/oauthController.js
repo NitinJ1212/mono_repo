@@ -244,7 +244,6 @@ async function handleAuthorizationCode(req, res) {
     }
 
     // 5. PKCE: verify code_verifier against stored code_challenge
-    console.log(codeData.code_challenge, "codeData.code_challenge---------", code_verifier, "code_verifier---------")
     if (!verifyCodeChallenge(code_verifier, codeData.code_challenge)) {
       await auditLog({ eventType: 'oauth.pkce_failed', req, metadata: { client_id } });
       return res.status(400).json({ error: 'invalid_grant', message: 'PKCE verification failed' });
@@ -260,16 +259,17 @@ async function handleAuthorizationCode(req, res) {
     if (!user) {
       return res.status(400).json({ error: 'invalid_grant', message: 'User not found' });
     }
-
+    const currentUris = user?.logout_uri ?? [];
     const authData = await redis.get(`logout_uri:${code}`);
-    console.log(authData, "--------authdata")
-    const logout_uri = JSON.parse(authData);
-    const value = "{http://localhost:5173/,http://localhost:5174/}";
-    const arr = user?.logout_uri.slice(1, -1).split(",");
+    const logout_uri = JSON.parse(authData)?.logout_uri;
+    // const arr = user && user?.logout_uri.slice(1, -1).split(",");
     // 8. Issue tokens
     const tokens = await issueTokenPair(user, client_id, codeData.scopes);
-    console.log('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id], "queryryyyyyyyyyyyyyyy", authData, "mmmmmmmmmmmmmmmmmmmmmmm:::", logout_uri, "code------------------", code)
-    await query('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id]);
+    console.log(logout_uri, "00000000000000000000000", user.id)
+    if (logout_uri && !currentUris.includes(logout_uri)) {
+      await query(`UPDATE users SET logout_uri = array_append(logout_uri, $1) WHERE id = $2`, [logout_uri, user.id]);
+    }
+    // await query('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id]);
     await auditLog({
       userId: user.id, clientId: client_id,
       eventType: 'oauth.token_issued', req,
@@ -365,7 +365,7 @@ async function handleRefreshToken(req, res) {
 // POST /oauth/revoke  (RFC 7009)
 // ─────────────────────────────────────────────────────────
 async function revoke(req, res) {
-  const { token: rawToken, client_id, client_secret } = req.validated;
+  const { token: rawToken, client_id, client_secret, logout_uri } = req.validated;
 
   try {
     const client = await getClient(client_id, client_secret);
@@ -403,7 +403,16 @@ async function revoke(req, res) {
         console.log(err)
       }
     }
-
+    const userData = await query(
+      'select id, logout_uri from users where id = (select user_id from refresh_tokens where token_hash = $1 and client_id = $2)',
+      [tokenHash, client_id]
+    );
+    const user = userData.rows[0];
+    const currentUris = user?.logout_uri ?? [];
+    console.log(tokenHash, client_id, "---------------------enter----------")
+    if (logout_uri && currentUris.includes(logout_uri)) {
+      await query(`UPDATE users SET logout_uri = array_remove(logout_uri, $1) WHERE id = $2`, [logout_uri, user.id]);
+    }
     // RFC 7009: always return 200 regardless
     return res.status(200).json({});
 

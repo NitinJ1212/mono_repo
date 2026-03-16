@@ -51,6 +51,7 @@ const revokeSchema = z.object({
   token: z.string().min(1),
   client_id: z.string().min(1),
   client_secret: z.string().min(1),
+  logout_uri: z.string().url(),
 });
 
 const clientRegisterSchema = z.object({
@@ -69,7 +70,7 @@ function validate(schema) {
         error: 'validation_error',
         details: result.error.flatten().fieldErrors,
       });
-    } 
+    }
     req.validated = result.data;
     next();
   };
