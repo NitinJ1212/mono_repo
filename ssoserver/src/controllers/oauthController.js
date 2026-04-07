@@ -11,6 +11,9 @@ const { auditLog } = require('../utils/audit');
 const ACCESS_TTL = parseInt(process.env.ACCESS_TOKEN_TTL) || 900;
 const REFRESH_TTL = parseInt(process.env.REFRESH_TOKEN_TTL) || 604800;
 
+
+// authController.js mein add karo
+
 // ─── HELPER: validate client credentials ─────
 async function getClient(clientId, clientSecret) {
   const result = await query('SELECT * FROM clients WHERE client_id = $1 AND is_active = TRUE', [clientId]);
@@ -28,7 +31,6 @@ async function getClient(clientId, clientSecret) {
   // return valid ? client : null;
 
   const bcrypt = require('bcrypt');
-  console.log(client.client_secret_hash, "clientSecret, client.client_secret_hash------------------");
   const valid = await bcrypt.compare(clientSecret, client.client_secret_hash);
   return valid ? client : null;
 }
@@ -188,6 +190,86 @@ async function consent(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────
+
+async function handleLoginAuthorizationCode(req, res) {
+  const { code, redirect_uri, client_id, client_secret, code_verifier } = req.validated;
+
+  try {
+    // 1. Validate client
+    const client = await getClient(client_id, client_secret);
+    if (!client) {
+      return res.status(401).json({ error: 'invalid_client' });
+    }
+
+    // 2. Look up auth code (Redis first for speed)
+    let codeData;
+    const cached = await redis.get(`auth_code:${code}`);
+    if (cached) {
+      codeData = JSON.parse(cached);
+    } else {
+      const dbResult = await query(`SELECT * FROM authorization_codes WHERE code = $1 AND used = FALSE AND expires_at > NOW()`, [code]);
+      if (!dbResult.rows[0]) {
+        return res.status(400).json({ error: 'invalid_grant', message: 'Invalid or expired authorization code' });
+      }
+      const row = dbResult.rows[0];
+      codeData = {
+        userId: row.user_id,
+        client_id: row.client_id,
+        redirect_uri: row.redirect_uri,
+        scopes: row.scopes,
+        code_challenge: row.code_challenge,
+      };
+    }
+
+    // 3. Validate client_id matches
+    if (codeData.client_id !== client_id) {
+      return res.status(400).json({ error: 'invalid_grant', message: 'client_id mismatch' });
+    }
+
+    // 4. Validate redirect_uri
+    if (codeData.redirect_uri !== redirect_uri) {
+      return res.status(400).json({ error: 'invalid_grant', message: 'redirect_uri mismatch' });
+    }
+
+    // 5. PKCE: verify code_verifier against stored code_challenge
+    if (!verifyCodeChallenge(code_verifier, codeData.code_challenge)) {
+      await auditLog({ eventType: 'oauth.pkce_failed', req, metadata: { client_id } });
+      return res.status(400).json({ error: 'invalid_grant', message: 'PKCE verification failed' });
+    }
+
+    // 6. Mark code as used (prevent replay)
+    await query('UPDATE authorization_codes SET used = TRUE WHERE code = $1', [code]);
+    await redis.del(`auth_code:${code}`);
+
+    // 7. Fetch user
+    const userResult = await query('SELECT id, email, name, email_verified,logout_uri FROM users WHERE id = $1', [codeData.userId]);
+    const user = userResult.rows[0];
+    if (!user) {
+      return res.status(400).json({ error: 'invalid_grant', message: 'User not found' });
+    }
+    const currentUris = user?.logout_uri ?? [];
+    const authData = await redis.get(`logout_uri:${code}`);
+    const logout_uri = JSON.parse(authData)?.logout_uri;
+    // const arr = user && user?.logout_uri.slice(1, -1).split(",");
+    // 8. Issue tokens
+    const tokens = await issueTokenPair(user, client_id, codeData.scopes);
+    console.log(logout_uri, "00000000000000000000000", user.id)
+    if (logout_uri && !currentUris.includes(logout_uri)) {
+      await query(`UPDATE users SET logout_uri = array_append(logout_uri, $1) WHERE id = $2`, [logout_uri, user.id]);
+    }
+    // await query('UPDATE users SET logout_uri = $1 WHERE id = $2', [(user.logout_uri ? ',' : "") + logout_uri?.logout_uri, user.id]);
+    await auditLog({
+      userId: user.id, clientId: client_id,
+      eventType: 'oauth.token_issued', req,
+    });
+
+    return res.status(200).json(tokens);
+
+  } catch (err) {
+    console.error('Token exchange error:', err);
+    return res.status(500).json({ error: 'server_error' });
+  }
+}
 // POST /oauth/token
 // grant_type: authorization_code  |  refresh_token
 // ─────────────────────────────────────────────────────────
@@ -282,6 +364,7 @@ async function handleAuthorizationCode(req, res) {
     return res.status(500).json({ error: 'server_error' });
   }
 }
+
 
 async function handleRefreshToken(req, res) {
   const { refresh_token, client_id, client_secret } = req.validated;
@@ -409,7 +492,6 @@ async function revoke(req, res) {
     );
     const user = userData.rows[0];
     const currentUris = user?.logout_uri ?? [];
-    console.log(tokenHash, client_id, "---------------------enter----------")
     if (logout_uri && currentUris.includes(logout_uri)) {
       await query(`UPDATE users SET logout_uri = array_remove(logout_uri, $1) WHERE id = $2`, [logout_uri, user.id]);
     }
@@ -474,10 +556,7 @@ async function userinfo(req, res) {
   const scopes = (req.user.scope || '').split(' ');
 
   try {
-    const result = await query(
-      'SELECT id, email, name, email_verified, created_at FROM users WHERE id = $1',
-      [userId]
-    );
+    const result = await query('SELECT id, email, name, email_verified, created_at FROM users WHERE id = $1', [userId]);
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: 'user_not_found' });
 

@@ -6,7 +6,7 @@ const SSO_SERVER = process.env.SSO_SERVER || 'http://localhost:5000/api/auth-sso
 const CLIENT_ID = process.env.CLIENT_ID || '';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || '';
 const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:5175/auth/callback';
-const LOGOUT_URI = process.env.LOGOUT_URI || 'http://localhost:4001/api/auth/logout';
+const LOGOUT_URI = process.env.LOGOUT_URI || 'http://localhost:4009/api/auth/logout';
 
 // ── Build SSO authorize URL with PKCE ─────────
 function buildAuthUrl() {

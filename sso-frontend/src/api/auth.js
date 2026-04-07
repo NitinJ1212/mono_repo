@@ -3,12 +3,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api/auth-sso',
   withCredentials: true,   // sends session cookie automatically
 });
 
 // Check if user is logged in → calls GET /api/auth/me on backend
-export const getMe = () => api.get('/auth/me').then(r => r.data);
+export const getMe = () => api.get('/oauth/userinfo').then(r => r.data);
 
 // Get SSO login URL → calls GET /api/auth/login on backend
 export const getLoginUrl = () => api.get('/auth/login').then(r => r.data.url);

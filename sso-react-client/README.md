@@ -43,7 +43,7 @@ sso-react-client/
 POST http://localhost:3000/admin/clients
 {
   "name": "React Client App",
-  "redirect_uris": ["http://localhost:4000/auth/callback"],
+  "redirect_uris": ["http://localhost:4008/auth/callback"],
   "allowed_scopes": ["openid", "profile", "email"],
   "grant_types": ["authorization_code", "refresh_token"]
 }
@@ -55,7 +55,7 @@ Copy `client_id` and `client_secret` from response.
 
 ```sql
 UPDATE clients
-SET logout_uri = 'http://localhost:4000/backchannel-logout'
+SET logout_uri = 'http://localhost:4008/backchannel-logout'
 WHERE client_id = 'your-client-id';
 ```
 
@@ -65,7 +65,7 @@ WHERE client_id = 'your-client-id';
 CLIENT_ID=your-client-id-from-step-1
 CLIENT_SECRET=your-client-secret-from-step-1
 SSO_SERVER=http://localhost:3000
-REDIRECT_URI=http://localhost:4000/auth/callback
+REDIRECT_URI=http://localhost:4008/auth/callback
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -100,7 +100,7 @@ Open http://localhost:5173
 5. React: window.location.href = ssoUrl
 6. Browser goes to SSO Server login page
 7. User logs in at SSO (localhost:3000)
-8. SSO redirects browser → GET http://localhost:4000/auth/callback?code=...&state=...
+8. SSO redirects browser → GET http://localhost:4008/auth/callback?code=...&state=...
 9. Backend:
    - Verifies state (CSRF check)
    - Exchanges code + code_verifier → access_token + refresh_token
@@ -114,7 +114,7 @@ Open http://localhost:5173
 ### Auto-Logout Flow
 ```
 1. User logs out from another app
-2. SSO calls POST http://localhost:4000/backchannel-logout { user_id }
+2. SSO calls POST http://localhost:4008/backchannel-logout { user_id }
 3. Backend sets Redis: logged_out:<user_id> = "1"
 4. Next API call from React hits requireAuth middleware
 5. Middleware sees Redis flag → destroys session → returns 401

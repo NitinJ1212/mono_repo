@@ -45,6 +45,83 @@ async function register(req, res) {
 // ─── LOGIN ───────────────────────────────────────────────
 // POST /auth/login
 async function login(req, res) {
+  const { email, password } = req.validated;
+  try {
+    // Fetch user
+    const result = await query(`SELECT id, email, name, password_hash, mfa_enabled, mfa_secret,
+              status, failed_attempts, locked_until FROM users WHERE email = $1`, [email.toLowerCase()]);
+    const user = result.rows[0];
+    // Always same error to prevent user enumeration
+    if (!user) {
+      await auditLog({ eventType: 'auth.login_failed', req, metadata: { reason: 'user_not_found', email } });
+      return res.status(401).json({ error: 'invalid_credentials', message: 'Invalid email or password' });
+    }
+
+    // Check account status
+    if (user.status === 'disabled') {
+      return res.status(403).json({ error: 'account_disabled', message: 'Account is disabled' });
+    }
+
+    // Check lockout
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      return res.status(403).json({
+        error: 'account_locked',
+        message: 'Account temporarily locked. Try again later.',
+        locked_until: user.locked_until,
+      });
+    }
+
+    // Verify password
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+
+      // Increment failed attempts; lock after 5
+      const newAttempts = (user.failed_attempts || 0) + 1;
+      const lockUntil = newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      await query('UPDATE users SET failed_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3', [newAttempts, lockUntil, user.id]);
+      await auditLog({ userId: user.id, eventType: 'auth.login_failed', req, metadata: { reason: 'wrong_password' } });
+      return res.status(401).json({ error: 'invalid_credentials', message: 'Invalid email or password' });
+    }
+
+    // Reset failed attempts
+    await query('UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = $1', [user.id]);
+
+    // ── MFA required ──
+    if (user.mfa_enabled) {
+      // Store a short-lived MFA pending token in Redis
+      const mfaPending = generateToken(24);
+      await redis.setex(`mfa_pending:${mfaPending}`, 300, JSON.stringify({
+        userId: user.id,
+        session_id: null,
+      }));
+
+      await auditLog({ userId: user.id, eventType: 'auth.mfa_required', req });
+
+      return res.status(200).json({
+        mfa_required: true,
+        mfa_session: mfaPending,
+        message: 'MFA verification required',
+      });
+    }
+
+    // ── No MFA: create session and handle auth flow ──
+    // const { sessionToken, sessionId } = await createSession(user, req);
+
+    await auditLog({ userId: user.id, eventType: 'auth.login_success', req });
+
+    // Plain login (not OAuth flow)
+    // setSessionCookie(res, sessionToken);
+    return res.status(200).json({
+      message: 'Login successful',
+      user: { id: user.id, email: user.email, name: user.name }
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ error: 'server_error' });
+  }
+}
+async function ssologin(req, res) {
   const { email, password, session_id } = req.validated;
   try {
     // Fetch user
@@ -142,7 +219,6 @@ async function login(req, res) {
     return res.status(500).json({ error: 'server_error' });
   }
 }
-
 // ─── MFA VERIFY ──────────────────────────────────────────
 // POST /auth/mfa/verify
 async function mfaVerify(req, res) {
@@ -484,7 +560,7 @@ function setSessionCookie(res, sessionToken) {
 }
 
 module.exports = {
-  register, login, mfaVerify, mfaSetup, mfaConfirm,
+  register, login, ssologin, mfaVerify, mfaSetup, mfaConfirm,
   logout, allLogout, getSessions, revokeSession,
   issueAuthCode, createSession, setSessionCookie,
 };

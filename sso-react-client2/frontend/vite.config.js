@@ -9,17 +9,17 @@ export default defineConfig({
     proxy: {
       // All /api/* and /auth/* calls go to Express backend
       '/api': {
-        target:      'http://localhost:4001',
+        target:      'http://localhost:4009',
         changeOrigin: true,
         credentials: true,
       },
       '/auth': {
-        target:      'http://localhost:4001',
+        target:      'http://localhost:4009',
         changeOrigin: true,
         credentials: true,
       },
       '/backchannel-logout': {
-        target:       'http://localhost:4001',
+        target:       'http://localhost:4009',
         changeOrigin: true,
       },
     },

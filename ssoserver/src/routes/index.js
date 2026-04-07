@@ -16,6 +16,7 @@ const {
   registerSchema, loginSchema, mfaVerifySchema,
   authorizeSchema, tokenSchema, revokeSchema,
   clientRegisterSchema,
+  ssologinSchema,
 } = require('../utils/validators');
 
 // ─────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ router.get('/oauth/authorize', validateQuery(authorizeSchema), oauthCtrl.authori
 // Login with email + password
 // POST /auth/login
 router.post('/auth/login', loginLimiter, validate(loginSchema), authCtrl.login);
+router.post('/auth/sso-login', loginLimiter, validate(ssologinSchema), authCtrl.ssologin);
 // Step 2: Exchange auth code for tokens  /  Refresh tokens
 // POST /oauth/token
 router.post('/oauth/token', tokenLimiter, validate(tokenSchema), oauthCtrl.token);
@@ -118,22 +120,6 @@ router.get('/oauth/userinfo', authenticate, oauthCtrl.userinfo);
 // View audit logs
 // GET /admin/audit-logs
 router.get('/admin/audit-logs', adminCtrl.auditLogs);
-
-
-
-
-// In your auth middleware on client app — check the flag
-async function clientAuthMiddleware(req, res, next) {
-  const userId = req.user?.id;
-  if (userId) {
-    const loggedOut = await redis.get(`logged_out:${userId}`);
-    if (loggedOut) {
-      req.session.destroy();
-      return res.status(401).json({ error: 'session_terminated', message: 'You have been logged out' });
-    }
-  }
-  next();
-}
 
 
 

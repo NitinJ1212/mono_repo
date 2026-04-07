@@ -10,6 +10,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+const ssologinSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
   session_id: z.string().optional(),
 });
 
@@ -108,7 +112,7 @@ function validateQuery(schema) {
 }
 
 module.exports = {
-  registerSchema, loginSchema, mfaVerifySchema,
+  registerSchema, loginSchema, ssologinSchema, mfaVerifySchema,
   authorizeSchema, tokenSchema, revokeSchema,
   clientRegisterSchema,
   validate, validateQuery,

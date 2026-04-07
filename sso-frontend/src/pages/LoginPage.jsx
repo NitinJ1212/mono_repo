@@ -83,22 +83,26 @@ export default function LoginPage() {
   const reason = params.get('reason');
   const loggedOut = params.get('logged_out');
 
-  const alertMsg = 
-  // error === 'state_mismatch' ? { type: 'err', msg: '⚠  Security check failed. Please try again.' }
-  //   : error === 'token_exchange_failed' ? { type: 'err', msg: '⚠  Login failed. Please try again.' }
-  //     : error === 'access_denied' ? { type: 'err', msg: '⚠  Access was denied by SSO.' }
-  //       : error === 'missing_code' ? { type: 'err', msg: '⚠  Authorization code missing.' }
-  //         : reason === 'sso_logout' ? { type: 'info', msg: '◌  You were signed out by SSO.' }
-  //           : reason === 'session_expired' ? { type: 'info', msg: '◌  Session expired. Please sign in again.' }
-  //             : loggedOut ? { type: 'info', msg: '◌  You have been signed out successfully.' }
-  //               : null;
+  const alertMsg =
+    // error === 'state_mismatch' ? { type: 'err', msg: '⚠  Security check failed. Please try again.' }
+    //   : error === 'token_exchange_failed' ? { type: 'err', msg: '⚠  Login failed. Please try again.' }
+    //     : error === 'access_denied' ? { type: 'err', msg: '⚠  Access was denied by SSO.' }
+    //       : error === 'missing_code' ? { type: 'err', msg: '⚠  Authorization code missing.' }
+    //         : reason === 'sso_logout' ? { type: 'info', msg: '◌  You were signed out by SSO.' }
+    //           : reason === 'session_expired' ? { type: 'info', msg: '◌  Session expired. Please sign in again.' }
+    //             : loggedOut ? { type: 'info', msg: '◌  You have been signed out successfully.' }
+    //               : null;
 
-  async function handleLogin() {
-    if (busy) return;
-    setBusy(true);
-    try { await login(); }
-    catch (_) { setBusy(false); }
-  }
+    async function handleLogin() {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const loggedin = await login();
+        console.log(loggedin, "3333333333333333333333333333333----")
+        if (loggedin) navigate('/profile', { replace: true });
+      }
+      catch (_) { setBusy(false); }
+    }
 
   if (loading) return null;
 
