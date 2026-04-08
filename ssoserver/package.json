@@ -4,7 +4,7 @@
   "description": "Custom SSO Server - Authorization Code + PKCE",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
+    "start": "nodemon src/app.js",
     "dev": "nodemon src/app.js",
     "migrate": "node src/db/migrate.js"
   },
